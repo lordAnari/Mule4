@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="9668a694-838b-4d12-91a8-61c1a14dfde3" basePath="/v1/products" >
+		<http:request-connection host="rajeprachi-eval-test.apigee.net" />
+	</http:request-config>
+	<flow name="process_layer" doc:id="c5d72caa-0cb6-42eb-80d8-3e85cbb12a02">
+		<ee:transform doc:name="set_foreach_variable" doc:id="fddc3875-3b2e-4767-ac95-2a60a1682886">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="productID1"><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<set-variable value="#[[]]" doc:name="Set order[]" doc:id="09a6cfe4-0b81-4d2b-98f8-aa45cbaae562" variableName="order" />
+		<foreach doc:name="For Each Product" doc:id="aad4210e-0425-4e36-8753-34e2d971b6b0" collection="#[vars.productID1]">
+			<set-variable value="#[payload.productId]" doc:name="Set Variable" doc:id="8cbfb870-da70-416a-8f6c-760883261fb4" variableName="pID" />
+			<flow-ref doc:name="get_prod_flow" doc:id="c3050380-286a-4abb-9cb5-156c51593d13" name="get_prod" />
+			<ee:transform doc:name="append_order[]" doc:id="7bbde530-e7a1-45b5-a047-1d8195496e27">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="order"><![CDATA[%dw 2.0
+output application/json
+---
+vars.order + payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="get_order[]" doc:id="a4ac6ad5-7ef4-4498-9782-f6d0f5e59d75">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.order]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+		
+		<flow-ref doc:name="Flow Reference" doc:id="ad4d99bc-9ba9-499b-8aa9-909ec81c93bc" name="systemLayerFlow1"/>
+		<ee:transform doc:name="Transform Message" doc:id="050f8b9c-0013-4491-993a-68b5fdc10195">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="94a67577-fc21-4e6e-be2d-d58d7a3bc087" message="#[payload]" />
+		
+	</flow>
+	<flow name="get_prod" doc:id="a4b6d036-6fb8-49ea-9ef6-b82e46f41b65" >
+		<try doc:name="Try_check_prod_availibility" doc:id="94adb766-27df-4b3b-8a67-9c0f66e178f9" >
+			<http:request method="GET" doc:name="retrive_prod_details" doc:id="f90b024b-c54b-4361-a781-10e3765bb125" config-ref="HTTP_Request_configuration" url="http://rajeprachi-eval-test.apigee.net/v1/products/{productID}">
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	productID : vars.pID
+}]]]></http:uri-params>
+		</http:request>
+			<set-variable value="#[attributes.statusCode]" doc:name="Set_status_true" doc:id="7f1ec03e-face-4ab1-9ad8-f9c65192b5e3" variableName="status"/>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="80b540f9-fb86-4ba0-9be9-a98a93722f7d" >
+					<set-variable value="#[404]" doc:name="Set_status_false" doc:id="a91cc3ba-a670-4050-925f-7709e6d51543" variableName="status"/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<ee:transform doc:name="set_order" doc:id="ccf97597-8d78-4cdb-b892-92f04d36b565">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"result" : payload,
+	"status" : vars.status
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="0f28d6f0-9041-4cc7-bb4e-364712f910a2" message="#[payload]"/>
+	</flow>
+</mule>

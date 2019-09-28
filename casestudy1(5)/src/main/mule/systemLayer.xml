@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="systemLayerFlow1" doc:id="731e569d-cfac-4b44-bdc7-a23c6f842a98" >
+		<set-variable value="#[[]]" doc:name="Set Variable" doc:id="a90a4adb-6f45-4031-a1e3-7d5215e2e324" variableName="insertTrue" />
+		<flow-ref doc:name="generate_orderNo_flow" doc:id="bc5ecdd8-c125-47ed-8390-2478bd8fd55c" name="generateOrderNoFlow" />
+		<ee:transform doc:name="incr_orderNo" doc:id="87153e35-092a-454f-a5fb-a828ae295550">
+			<ee:message>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="orderNo" ><![CDATA[%dw 2.0
+output application/java
+---
+vars.orderNo + 1]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="e1729390-fe19-4d7e-9063-59fd687f6f6d" collection="#[vars.order]">
+			<flow-ref doc:name="system_layer_flow" doc:id="7ffdafc8-b068-47cc-b72c-78bba8ceacc1" name="systemLayerFlow" />
+			<ee:transform doc:name="Transform Message" doc:id="3e808d4e-a3a9-4089-afe1-978708d95e38">
+				<ee:message>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="insertTrue"><![CDATA[%dw 2.0
+output application/java
+---
+vars.insertTrue + payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		</foreach>
+		<ee:transform doc:name="Transform Message" doc:id="cbe06e9b-42be-4a5d-a865-20230dcc010f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"orderNo" : vars.orderNo,
+	"orderItemsStatus": [
+		vars.insertTrue
+	]
+}
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="systemLayerFlow" doc:id="7ece3cc8-c7a0-41ca-9ba8-0e405026b8c5" >
+		<logger level="INFO" doc:name="Logger" doc:id="93598578-6742-4aaf-a9cc-5d4f95a086e2" message='"Inside System Layer"'/>
+		<logger level="INFO" doc:name="Logger" doc:id="57393018-7e6c-4e38-82c4-a5c2d5ffad8c" message="#[payload]"/>
+		<ee:transform doc:name="set_insert_data" doc:id="d78e9def-1ae6-4427-bbf8-e1011b203a67" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="insertData" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"orderDate" : now() as String {format : "dd-MM-yyyy"},
+	"productID" : payload.result.entities[0].name,
+	"productName" : payload.result.entities[0].product_name,
+	"category" : payload.result.entities[0].category[0],
+	"status" : payload.status
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="0ef3f97b-320b-4a82-aeba-b278fca9d01e" message="#[payload]"/>
+		<choice doc:name="Choice" doc:id="b25922b2-50dd-4471-8713-b4e94668db3d" >
+			<when expression="#[payload.status == 200]">
+				<db:insert doc:name="Insert to ORDER Table" doc:id="f8d5d3fc-0241-4dfb-adfc-423a30dfc01c" config-ref="Database_Config">
+			<db:sql>INSERT INTO ORDERS VALUES(:oNo, :oDate, :pID, :pName, :ctgy);</db:sql>
+			<db:input-parameters><![CDATA[#[%dw 2.0
+output application/java
+---
+{
+	oNo : vars.orderNo,
+	oDate : vars.insertData.orderDate,
+	pID : vars.insertData.productID,
+	pName : vars.insertData.productName,
+	ctgy : vars.insertData.category
+}]]]></db:input-parameters>
+</db:insert>
+				<choice doc:name="Choice" doc:id="887b3796-aaf4-4f4c-9fce-6e814188a6f0" >
+					<when expression="#[payload.affectedRows &gt; 0]">
+						<ee:transform doc:name="Transform Message" doc:id="5fa3dc50-52ee-42c1-8f72-29599cbb2dc3">
+			<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"productID" : vars.insertData.productID,
+	"status" : vars.insertData.status ++ ": Order Placed"
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+					</when>
+					<otherwise >
+						<raise-error doc:name="Raise error" doc:id="9806e5aa-4860-4abe-8b73-dff8dcf39865" type="APP:DATA_NOT_INSERTED"/>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="ddaeb4a1-c12d-4a62-9a7b-b1c654a1ccbf" type="APP:PRODUCT_NOT_FOUND" />
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="b13563c7-dd07-4649-a0da-f848e99bba72" type="APP:PRODUCT_NOT_FOUND">
+				<ee:transform doc:name="Transform Message" doc:id="d866cb94-58c5-4a4e-bacd-566f64071e64" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"productID" : payload.result.productId,
+	"status" : vars.insertData.status ++ ": Product Not Found"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="6a8d5e00-85ea-4f08-a251-16f35fbe5171" type="DB:BAD_SQL_SYNTAX, DB:CONNECTIVITY, DB:QUERY_EXECUTION, DB:RETRY_EXHAUSTED">
+				<ee:transform doc:name="Transform Message" doc:id="fcbb74e3-54cb-42a3-a5b3-ecc07fe156b4" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"productID" : vars.insertData.productID,
+	"status" : "Database Error"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		
+</error-handler>
+	</flow>
+</mule>

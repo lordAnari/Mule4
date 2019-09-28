@@ -1,0 +1,21 @@
+[
+  {
+    "result": {
+      "entities": [
+        {
+          "category": [
+            "Home"
+          ],
+          "images": [
+            "https://cdn.pixabay.com/photo/2017/10/06/12/16/towels-2822910_1280.jpg"
+          ],
+          "name": "204148",
+          "overall_rating": 4.55,
+          "product_name": "Kenneth Cole Reaction Home Towel Collection",
+          "short_description": "Luxurious comfort for the modern home, the Kenneth Cole Reaction Home Towel Collection is uniquely designed from combed cotton for a super plush look and sumptuously soft feel. These long-lasting towels are finished with a contemporary textured trim."
+        }
+      ]
+    },
+    "status": 200
+  }
+]

@@ -1,0 +1,80 @@
+#%RAML 1.0
+title: Order Placing
+version: v1
+description: API to place order for dealer interface
+baseUri: http://localhost:8081/
+types: 
+  OrderItem:
+    description: Single item in the order
+    type: object
+    properties: 
+      productId: string
+      quantity: integer
+  Order:
+    description: Order with multiple items
+    type: OrderItem[] 
+  OrderResponseItem:
+    description: single item in the response
+    type: object
+    properties: 
+      productId: string
+      status: string
+  OrderResponse:
+    description: Order response
+    type: object
+    properties: 
+      orderNo: integer
+      orderItemsStatus: OrderResponseItem[] 
+    
+/order:
+  description: interface to place the order
+  post:
+    body: 
+      application/json: 
+        type: Order
+        example: |
+          [
+            {
+              "productId": "18841",
+              "quantity": 1
+            },
+            {
+              "productId": "361308",
+              "quantity": 1
+            },
+            {
+              "productId": "3",
+              "quantity": 1
+            }
+          ]
+    responses: 
+      200:
+        body: 
+          application/json: 
+            type: OrderResponse
+            example: |
+              {
+                "orderNo": 1,
+                "orderItemsStatus": [
+                  {
+                    "productId": "18841",
+                    "status": "200: Order Placed"
+                  },
+                  {
+                    "productId": "361308",
+                   "status": "200: Order Placed"
+                   },
+                  {
+                    "productId": "3",
+                    "status": "404: Product Not Found"
+                  }
+                ]
+              }
+      400:
+        body: 
+          application/json: 
+            example: |
+              {
+                "message": "Incorrect input format",
+                "errorMessage": "Error validating JSON. Error: - Missing required field \"quantity\""
+              }

@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="ptype" format="json">
+      <types:shape format="weave" example="examples/payload.json"><![CDATA[%dw 2.0
+
+type ptype = Array<{|  result: {|    entities: Array<{|      category: Array<String>, 
+      images: Array<String>, 
+      name: String, 
+      overall_rating: Number {"typeId": "double"}, 
+      product_name: String, 
+      short_description: String
+    |}>
+  |}, 
+  status: Number {"typeId": "int"}
+|}> {"example": "[{\"result\":{\"entities\":[{\"category\":[\"Home\"],\"images\":[\"https:\/\/cdn.pixabay.com\/photo\/2017\/10\/06\/12\/16\/towels-2822910_1280.jpg\"],\"name\":\"204148\",\"overall_rating\":4.55,\"product_name\":\"Kenneth Cole Reaction Home Towel Collection\",\"short_description\":\"Luxurious comfort for the modern home, the Kenneth Cole Reaction Home Towel Collection is uniquely designed from combed cotton for a super plush look and sumptuously soft feel. These long-lasting towels are finished with a contemporary textured trim.\"}]},\"status\":200}]"}
+
+]]></types:shape>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#d78e9def-1ae6-4427-bbf8-e1011b203a67">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="ptype"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+</types:mule>

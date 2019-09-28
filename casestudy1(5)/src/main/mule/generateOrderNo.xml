@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="1623d6e6-e7ab-4a9e-b0ba-eb1dfd216baf" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="root" database="casestudy" />
+	</db:config>
+	<flow name="generateOrderNoFlow" doc:id="511274c7-6ec1-4639-b265-3d4c54970511" >
+		<scheduler doc:name="Scheduler" doc:id="26dcede7-78ba-4bee-824e-a590b8105ff7" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" timeUnit="SECONDS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<os:retrieve doc:name="Retrieve" doc:id="fa5e12a8-deba-49e8-82af-58764f0b17c4" target="orderNo" key="key1" targetValue="#[payload as Number]">
+			<os:default-value ><![CDATA[#[0]]]></os:default-value>
+		</os:retrieve>
+		<db:select doc:name="Select" doc:id="d6d7944e-2261-4ff0-b63d-c432a7101d73" config-ref="Database_Config">
+			<db:sql >select * from orders where orderNumber &gt; :orderNo;</db:sql>
+			<db:input-parameters ><![CDATA[#[%dw 2.0
+output application/java
+---
+{
+	orderNo: vars.orderNo as Number
+}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Choice" doc:id="ed6373bb-0678-44ae-8e3f-f35e54c2c141" >
+			<when expression="#[payload != []]">
+				<os:store doc:name="Store" doc:id="33882999-d108-485e-a549-4237216e0d9c" key="key1">
+					<os:value ><![CDATA[#[max(payload.*orderNumber)]]]></os:value>
+				</os:store>
+				<logger level="INFO" doc:name="Logger" doc:id="025de0fe-c952-409b-8767-46ae5963a140" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="a52456f7-0c9d-4437-b8ac-991de6d3ce46" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
